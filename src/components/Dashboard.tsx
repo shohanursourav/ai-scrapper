@@ -76,8 +76,9 @@ export function Dashboard() {
     }
   }, [store.hydrated, store.city, store.niche]);
 
-  async function generateLeads(e?: React.FormEvent) {
+  async function generateLeads(e?: React.FormEvent, forceDemo?: boolean) {
     e?.preventDefault();
+    const useDemo = forceDemo ?? demo;
     if (!city.trim() || !niche.trim()) return setError("Enter both a city and a niche.");
     abortRef.current?.abort();
     const ctrl = new AbortController();
@@ -91,7 +92,7 @@ export function Dashboard() {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city: city.trim(), niche: niche.trim(), limit, demo }),
+        body: JSON.stringify({ city: city.trim(), niche: niche.trim(), limit, demo: useDemo }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error || `Request failed (${res.status})`);
@@ -338,7 +339,20 @@ export function Dashboard() {
               <p className="mt-1.5 truncate text-xs text-slate-500">{status.message}</p>
             </div>
           )}
-          {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              <span>{error}</span>
+              {!demo && /network|reach|fetch/i.test(error) && (
+                <button
+                  type="button"
+                  onClick={() => { setDemo(true); void generateLeads(undefined, true); }}
+                  className="rounded-lg bg-white px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100"
+                >
+                  Use Demo mode instead
+                </button>
+              )}
+            </div>
+          )}
         </form>
 
         {store.leads.length > 0 ? (
